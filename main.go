@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -12,11 +13,13 @@ func main() {
 	lambda.Start(handler)
 }
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.Println("Begin User Retrieval")
-
+	log.Println("Incoming req header: ")
+	fmt.Printf("%v", event.Headers)
+	fmt.Printf("%v", event.Body)
 	response := events.APIGatewayProxyResponse{
-		Body:       "Woo hoo!",
+		Body:       event.Body,
 		StatusCode: 200,
 	}
 
