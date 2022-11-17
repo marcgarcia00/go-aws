@@ -22,7 +22,7 @@ The files in this project are *not* run locally, they are currently trial-and-er
 ### 2. Ensure that lambda function runs locally
  - An error response such as "AWS needs credentials" is fine, **compilation errors should be addressed before pushing (imports, module not found, etc**)
 
-### 3. Update Go project to run on linux with command (for windows users): `$Env:GOOS = "linux"` and `$ENV:GOARCH=amd64`
+### 3. Update Go project to run on linux with command (for windows users): `$Env:GOOS = "linux"`
  - This ensures that AWS is able to compile the Go file (AWS Lambda requires Linux with GoLang)
 
 ### 4. Build executable for function 

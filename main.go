@@ -18,6 +18,8 @@ type UserCredentials struct {
 	Password string `json:"password"`
 }
 
+
+
 type User struct {
 	Id        int
 	Username  string
@@ -25,22 +27,6 @@ type User struct {
 	LastName  string
 	IsAdmin   bool
 }
-
-// func HandleRequest(ctx context.Context, credentials UserCredentials) (events.APIGatewayProxyResponse, error) {
-// 	log.Println("Begin User Retrieval")
-// 	log.Println("Incoming req header: ")
-// 	fmt.Printf("%v", credentials.Username)
-// 	fmt.Printf("%v", credentials.Password)
-
-// 	response := events.APIGatewayProxyResponse{
-// 		Headers:    map[string]string{"Content-Type": "application/json"},
-// 		StatusCode: 200,
-// 	}
-// 	responseBody, _ := json.Marshal(credentials)
-// 	response.Body = string(responseBody)
-// 	log.Println("End of Function")
-// return &response, nil
-// }
 
 func GetUser(ctx context.Context, credentials UserCredentials, dynaClient dynamodbiface.DynamoDBAPI) (
 	*dynamodb.GetItemOutput, error) {
@@ -57,18 +43,6 @@ func GetUser(ctx context.Context, credentials UserCredentials, dynaClient dynamo
 			},
 		},
 	})
-	// "username": {
-	// 	S: aws.String("marcgarcia"),
-	// },
-	// "firstName": {
-	// 	S: aws.String("MARC"),
-	// },
-	// "lastName": {
-	// 	S: aws.String("GARCIA"),
-	// },
-	// "isAdmin": {
-	// 	BOOL: aws.Bool(true),
-	// },
 	if err != nil {
 		log.Fatalf("Error fetching User: %s", err)
 		return result, err
@@ -96,3 +70,32 @@ func main() {
 	lambda.Start(Handler)
 	// lambda.Start(HandleRequest)
 }
+
+// "username": {
+// 	S: aws.String("marcgarcia"),
+// },
+// "firstName": {
+// 	S: aws.String("MARC"),
+// },
+// "lastName": {
+// 	S: aws.String("GARCIA"),
+// },
+// "isAdmin": {
+// 	BOOL: aws.Bool(true),
+// },
+
+// func HandleRequest(ctx context.Context, credentials UserCredentials) (events.APIGatewayProxyResponse, error) {
+// 	log.Println("Begin User Retrieval")
+// 	log.Println("Incoming req header: ")
+// 	fmt.Printf("%v", credentials.Username)
+// 	fmt.Printf("%v", credentials.Password)
+
+// 	response := events.APIGatewayProxyResponse{
+// 		Headers:    map[string]string{"Content-Type": "application/json"},
+// 		StatusCode: 200,
+// 	}
+// 	responseBody, _ := json.Marshal(credentials)
+// 	response.Body = string(responseBody)
+// 	log.Println("End of Function")
+// return &response, nil
+// }
