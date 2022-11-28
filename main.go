@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
@@ -18,84 +19,65 @@ type UserCredentials struct {
 	Password string `json:"password"`
 }
 
-
-
 type User struct {
-	Id        int
-	Username  string
-	FirstName string
-	LastName  string
-	IsAdmin   bool
+	username  string
+	firstName string
+	lastName  string
+	isAdmin   bool
+	password  string
 }
 
 func GetUser(ctx context.Context, credentials UserCredentials, dynaClient dynamodbiface.DynamoDBAPI) (
 	*dynamodb.GetItemOutput, error) {
-	log.Println("[START] GET USER")
-	fmt.Printf("CONTEXT: %v", ctx)
-	const tableName = "Users"
 
-	// username := aws.String(credentials.Username)
+	log.Println("[START] GET USER")
+	const tableName = "users"
+
+	username := aws.String(credentials.Username)
+	fmt.Printf("Username extracted from req body: %v \n", credentials.Username)
+
 	result, err := dynaClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
+			"username": {
+				S: username,
 			},
 		},
 	})
-	if err != nil {
-		log.Fatalf("Error fetching User: %s", err)
-		return result, err
-	}
+
+	fmt.Printf("GET USER RETURNED: %v", result)
 	return result, err
 }
 
-func Handler(ctx context.Context, credentials UserCredentials) (*dynamodb.GetItemOutput, error) {
+func Handler(ctx context.Context, credentials UserCredentials) error {
 	region := os.Getenv("AWS_REGION")
 	awsSession, err := session.NewSession(&aws.Config{
 		Region: aws.String(region)})
 
 	if err != nil {
-		log.Println("error returned")
+		log.Println("Error connected to DynamoDB")
 	}
 
 	dynaClient := dynamodb.New(awsSession)
-	response, err := GetUser(ctx, credentials, dynaClient)
+	result, err := GetUser(ctx, credentials, dynaClient)
 
-	return response, err
+	// if err != nil {
+	// 	log.Fatalf("Error fetching User: %s", err)
+	// 	return result
+	// }
+
+	user := User{}
+
+	fmt.Printf("\nBEGIN UNMARSHAL with : %v and User Interface: %v", result.Item, user)
+	jsonResult := dynamodbattribute.UnmarshalMap(result.Item, &user)
+
+	fmt.Printf("\noutgoing payload: %v", jsonResult)
+
+	return jsonResult
+
 }
 
 func main() {
 	log.Println("Start Lambda GO")
 	lambda.Start(Handler)
-	// lambda.Start(HandleRequest)
 }
-
-// "username": {
-// 	S: aws.String("marcgarcia"),
-// },
-// "firstName": {
-// 	S: aws.String("MARC"),
-// },
-// "lastName": {
-// 	S: aws.String("GARCIA"),
-// },
-// "isAdmin": {
-// 	BOOL: aws.Bool(true),
-// },
-
-// func HandleRequest(ctx context.Context, credentials UserCredentials) (events.APIGatewayProxyResponse, error) {
-// 	log.Println("Begin User Retrieval")
-// 	log.Println("Incoming req header: ")
-// 	fmt.Printf("%v", credentials.Username)
-// 	fmt.Printf("%v", credentials.Password)
-
-// 	response := events.APIGatewayProxyResponse{
-// 		Headers:    map[string]string{"Content-Type": "application/json"},
-// 		StatusCode: 200,
-// 	}
-// 	responseBody, _ := json.Marshal(credentials)
-// 	response.Body = string(responseBody)
-// 	log.Println("End of Function")
-// return &response, nil
-// }
