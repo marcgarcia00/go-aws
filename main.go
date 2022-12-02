@@ -1,11 +1,12 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,21 +21,25 @@ type UserCredentials struct {
 }
 
 type User struct {
-	username  string
-	firstName string
-	lastName  string
-	isAdmin   bool
-	password  string
+	Username  string `json:username`
+	FirstName string `json:password`
+	LastName  string `json:lastname`
+	IsAdmin   bool   `json:isAdmin`
+	Password  string `json:password`
 }
 
-func GetUser(ctx context.Context, credentials UserCredentials, dynaClient dynamodbiface.DynamoDBAPI) (
-	*dynamodb.GetItemOutput, error) {
+type Response struct {
+	Message *string
+	User    *User
+}
 
+func GetUserbyKey(credentials UserCredentials, body string, dynaClient dynamodbiface.DynamoDBAPI) (
+	*dynamodb.GetItemOutput, error) {
 	log.Println("[START] GET USER")
 	const tableName = "users"
-
 	username := aws.String(credentials.Username)
-	fmt.Printf("Username extracted from req body: %v \n", credentials.Username)
+	fmt.Printf("\nUsername extracted from api req body: %v \n", body)
+	fmt.Printf("\nUsername extracted from credentials struct: %v \n", credentials.Username)
 
 	result, err := dynaClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
@@ -45,36 +50,64 @@ func GetUser(ctx context.Context, credentials UserCredentials, dynaClient dynamo
 		},
 	})
 
+	if err != nil {
+		log.Println("Error fetching user")
+		return result, err
+	}
 	fmt.Printf("GET USER RETURNED: %v", result)
 	return result, err
 }
 
-func Handler(ctx context.Context, credentials UserCredentials) error {
+func Handler(event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	userMap := User{}
+
 	region := os.Getenv("AWS_REGION")
 	awsSession, err := session.NewSession(&aws.Config{
 		Region: aws.String(region)})
 
 	if err != nil {
 		log.Println("Error connected to DynamoDB")
+		return events.APIGatewayProxyResponse{}, err
 	}
 
 	dynaClient := dynamodb.New(awsSession)
-	result, err := GetUser(ctx, credentials, dynaClient)
 
-	// if err != nil {
-	// 	log.Fatalf("Error fetching User: %s", err)
-	// 	return result
-	// }
+	var credentialsJson UserCredentials
+	credentialsBytes := []byte(event.Body)
 
-	user := User{}
+	json.Unmarshal(credentialsBytes, &credentialsJson)
+	fmt.Printf("\n unmarshalled event body: %v", credentialsJson)
 
-	fmt.Printf("\nBEGIN UNMARSHAL with : %v and User Interface: %v", result.Item, user)
-	jsonResult := dynamodbattribute.UnmarshalMap(result.Item, &user)
+	user, err := GetUserbyKey(credentialsJson, event.Body, dynaClient)
 
-	fmt.Printf("\noutgoing payload: %v", jsonResult)
+	if err != nil {
+		log.Fatalf("Error fetching User: %s", err)
+		return events.APIGatewayProxyResponse{}, err
+	}
 
-	return jsonResult
+	jsonFromAWSErr := dynamodbattribute.UnmarshalMap(user.Item, &userMap)
 
+	if jsonFromAWSErr != nil {
+		fmt.Print("error with json unmarshaling")
+		return events.APIGatewayProxyResponse{}, jsonFromAWSErr
+	}
+	responseBody := Response{
+		Message: aws.String("Success!"),
+		User:    &userMap,
+	}
+
+	log.Println("Successfully completed get method")
+	responseBytes, err := json.Marshal(responseBody)
+
+	if err != nil {
+		return events.APIGatewayProxyResponse{}, err
+	}
+	response := events.APIGatewayProxyResponse{
+		StatusCode: 200,
+		Headers:    map[string]string{"Access-Control-Allow-Origin": "*"},
+		Body:       string(responseBytes),
+	}
+	return response, nil
 }
 
 func main() {
