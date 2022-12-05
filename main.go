@@ -38,8 +38,6 @@ func GetUserbyKey(credentials UserCredentials, body string, dynaClient dynamodbi
 	log.Println("[START] GET USER")
 	const tableName = "users"
 	username := aws.String(credentials.Username)
-	fmt.Printf("\nUsername extracted from api req body: %v \n", body)
-	fmt.Printf("\nUsername extracted from credentials struct: %v \n", credentials.Username)
 
 	result, err := dynaClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
